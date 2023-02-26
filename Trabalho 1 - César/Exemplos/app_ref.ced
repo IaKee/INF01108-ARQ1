@@ -1,0 +1,151 @@
+
+;
+;*************************************************************
+;
+;		Programa de Referência para desenvolvimento da aplicação
+;
+;		2019/2
+;
+;		Lisboa, Rafael e Cechin
+;
+;*************************************************************
+
+;
+;=============================================================
+;		Endereços para a aplicação e para o _SISTEMA
+;=============================================================
+_APP:		equ		h0100
+_SISTEMA:	equ		h0080
+
+;
+;=============================================================
+;		Funções de _SISTEMA
+;
+;		Forma de Chamada:
+;			mov		#CODIGO_DA_FUNCAO,r5
+;			jsr		r7,_SISTEMA
+;=============================================================
+
+;
+;-------------------------------------------------------------
+;Função:	Informa se foi digitada alguma tecla. Não bloqueia.
+;Entra:		-
+;Retorna:	R0==0, se nada foi digitado.
+;			R0!=0, se algo foi digitado.
+;-------------------------------------------------------------
+kbhit:		equ		0
+
+;
+;-------------------------------------------------------------
+;Função:	Bloqueia, esperando que seja digitada uma tecla.
+;			Não coloca o caractere no visor.
+;Entra:		-
+;Retorna:	R0=caractere ASCII da tecla digitada.
+;-------------------------------------------------------------
+getchar:	equ		1
+
+;
+;-------------------------------------------------------------
+;Função:	Coloca um caractere no visor.
+;			O caractere será colocado na posição atual do cursor, o qual será incrementado.
+;			Ao receber um caractere BS – Back Space (8), o cursor é movido uma posição para a esquerda.
+;Entra:		R0 = caractere ASCII a ser colocado no visor
+;Retorna:	-
+;-------------------------------------------------------------
+putchar:	equ		2
+
+;
+;-------------------------------------------------------------
+;Função:	Coloca um string no visor.
+;			O string é formado por bytes ASCII, terminado por “\0” (0).
+;			O string será colocado no visor a partir da posição atual do cursor.
+;Entra:		R0 = ponteiro para o string do tipo "C"
+;Retorna:	-
+;-------------------------------------------------------------
+putmsg:		equ		3
+
+;
+;-------------------------------------------------------------
+;Função:	Move o cursor para a posição desejada.
+;Entra:		R0 = nova posição para o cursor.
+;			Esse valor deve estar entre 0 e 35. 
+;			Outros valores farão com que o cursos desapareça do visor.
+;Retorna:	-
+;-------------------------------------------------------------
+setcursor:	equ		4
+
+;
+;-------------------------------------------------------------
+;Função:	Seleciona a parede de trabalho
+;Entra: 	R0 = número da parede.
+;Retorna:	R0 = largura da parede (abcissas – coordenadas “X”)
+;			R1 = altura da parede (ordenadas – coordenadas “Y”)
+;			Se o número fornecido da parede for inválido, retorna R0 = R1 = -1 (HFFFF)
+;-------------------------------------------------------------
+setwall:	equ		5
+
+;
+;-------------------------------------------------------------
+;Função:	Solicita informação sobre o estado de um ladrilho.
+;Entra: 	R0 = diferença da coordenada “X”, em relação à posição atual da câmera.
+;			R1 = diferença da coordenada “Y”, em relação à posição atual da câmera.
+;			Esses valores podem ser +1, -1 ou 0.
+;Retorna:	R0 = o estado do ladrilho. 
+;			Esses valores podem ser:
+;				0 = ladrilho não usado)
+;				1 = ladrilho em boas condições
+;				2 = ladrilho danificado
+;				3 = coordenadas fora da parede
+;-------------------------------------------------------------
+read:		equ		6
+
+;
+;-------------------------------------------------------------
+;Função:	Move a câmera para as coordenadas (0,0) da parede.
+;Entra:		-
+;Retorna:	-
+;-------------------------------------------------------------
+move00:		equ		7
+
+;
+;-------------------------------------------------------------
+;Função:	Move a câmera. Uma vez chamada a função, deve-se aguardar o encerramento do comando antes de enviar novo comando de movimentação.
+;			O deslocamento da câmera ocorre na horizontal ou na vertical (nunca na diagonal).
+;			O deslocamento da câmera demora T = 100ms + (NL-1) x 50ms, onde NL é o número de ladrilhos total do movimento comandado.
+;Entra: 	R0 = diferença da coordenada “X”, em relação à posição atual da câmera, para deslocar a câmera
+;			R1 = diferença da coordenada “Y”, em relação à posição atual da câmera, para deslocar a câmera
+;			Esses valores podem ser +2, -2, +1, -1 ou 0.
+;Retorna:	0, se não houve erro
+;			-1, se houve erro (ex: parâmetros de entrada inválidos)
+;-------------------------------------------------------------
+move:		equ		8
+
+;
+;-------------------------------------------------------------
+;Função:	Informa se a câmera está em movimento.
+;Entra:		-
+;Retorna:	R0 == 0, se a câmera está parada.
+;			R0 != 0, se a câmera está em movimento.
+;-------------------------------------------------------------
+moving:		equ		9
+
+;
+;-------------------------------------------------------------
+;Função:	Informa as coordenadas atuais da câmera.
+;			Essa informação só é válida se a câmera estiver parada.
+;Entra:		-
+;Retorna:	R0 = coordenada “X” da câmera
+;			R1 = coordenada “Y” da câmera
+;			Se a câmera estiver em movimento, será retornado R0 = R1 = -1 (HFFFF)
+;-------------------------------------------------------------
+getcamera:	equ		10
+
+
+
+;
+;=============================================================
+;		Início do programa de aplicação
+;=============================================================
+		org		_APP
+	
+

@@ -1,0 +1,11 @@
+Símbolo         Valor Decimal   Valor Hexadecimal
+-------         -------------   -----------------
+LOOP_IDENTIFICACAO        256                 100
+LOOP_IDENTIFICACAO_FLAG    16000                3E80
+MSG0                    16001                3E81
+MSG1                    16028                3E9C
+MSG2                    16065                3EC1
+MSG3                    16084                3ED4
+MSG4_1                  16110                3EEE
+MSG4_2                  16118                3EF6
+MSG4_3                  16129                3F01

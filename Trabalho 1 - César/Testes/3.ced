@@ -1,0 +1,49 @@
+;Nome: Giordano Souza de Paula
+;Cartao UFRGS: 00308054
+;Carregar o kernel fornecido e realizar carga parcial no processador Cesar - dos endereços 256 até 16383!!!
+;=======INICIO DO PROGRAMA PRINCIPAL=========;
+ORG 256 ;Endereco de inicio do programa
+
+LOOP_IDENTIFICACAO: ;Imprime a mensagem de identificacao na tela
+	MOV #MSG1, R0 ;Coloca a string da mensagem 1 no R0
+	MOV #3, R5 ;Coloca o valor 3 no R5, indicando a operacao putmsg(R0)
+	JSR R7, 128 ;Pula para a subrotina do sistema, onde a operacao solicitada é executada
+
+	MOV #1, R5 ;Coloca o valor 1 no R5, indicando a operacao R0=getchar()
+	JSR r7, 128 ;Pula para a subrotina do sistema, onde a operacao solicitada é executada
+
+	TST R0 ;Coloca o R0 como o ultimo utilizado
+	MOV R0, AUX0 ;Salva o valor atual de R0 em um endereco de memoria auxiliar
+	BEQ JMP_AUX0 ;Se a tecla tiver valor zero (NULL)
+	SUB R0, #13 ;Subtrai 13 (valor ASCII da tecla enter, do R0)
+	BEQ PEDE_NUM_PAREDE ;Se o valor resultante em R0 depois dessa operacao for zero, significa que a tecla digitada foi um enter
+	JMP_WAIT_ENTER_0: JMP LOOP_IDENTIFICACAO ;Fica em loop, ate que a tecla correta (enter) enter seja digitada
+
+PEDE_NUM_PAREDE:
+	JSR LIMPA_DISPLAY
+	MOV #MSG0, R0
+	MOV #3, R5
+	JSR R7, 128	
+	
+HLT
+
+LIMPA_DISPLAY:
+	NOP
+	MOV #MSG0, R0 ;Coloca a string da mensagem 0 no R0
+	MOV #3, R5 ;Coloca o valor 3 no R5, indicando a operacao putmsg(R0)
+	JSR R7, 128 ;Pula para a subrotina do sistema, onde a operacao solicitada é executada
+	JMP LIMPA_DISPLAY,i
+HLT
+
+;===========VARIAVEIS UTILIZADAS=============;
+ORG 16000
+AUX0: DB 0
+;===========MENSAGENS UTILIZADAS=============;
+MSG0: dab '                          ',0 ;Espaco vazio, para limpar o display entre mensagens
+MSG1: dab 'Autor:Giordano Souza - Cartao:308054',0 ;Mensagem de identificacao exibida no inicio do programa
+MSG2: dab 'Informe a parede: ',0
+MSG3: dab 'Numero da parede invalido!'
+MSG4_1: dab 'Parede ',0
+MSG4_2: dab ', Largura=',0
+MSG4_3: dab ', Altura=',0
+MSG_TESTE: dab 'Funcionou :D',0

@@ -1,0 +1,40 @@
+
+;==========================================================================
+; Área Reservada
+
+; Acesso em 16 bits
+		org		hff80
+STACK:
+		daw		[31]		; Área reservada
+IVET:	dw		0			; Vetor de interrupção
+
+; Acesso em 8 bits
+		dab		[24]
+INTS:	db		0			; INTERRUPT STATUS: IP x x x . x x IPStec IPStim
+INTE:	db		0			; INTERRUPT ENABLE: IE x x x . x x IEStec IEStim
+TECST:	db		0			; Status do teclado
+TECDT:	db		0			; Dado do teclado
+VISOR:	dab		[36]		; Portas de acesso ao visor
+
+;==========================================================================
+; Programa Principal
+		org		0
+	
+		mov		#STACK,r6
+		jsr		r7,GetTecla
+	
+		hlt
+
+;--------------------------------------------------------------------------
+; char GetTecla()
+GetTecla:
+		clr		TECST
+		
+GetTecla1:	
+		mov		TECST,r0
+		cmp		r0,#H80
+		bne		GetTecla1
+
+		mov		TECDT,r0
+		rts		r7
+	

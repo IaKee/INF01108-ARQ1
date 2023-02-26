@@ -1,0 +1,260 @@
+ 
+;
+;**************************************************************************************************
+; Programa a_nimado:
+;	- Faz a letra "A" "andar" pelo visor, parando/continuando sempre que for digitado SPACE
+;	- O programa baseia-se na operação de três rotinas: Animacao, Controle e Wait
+;		- Animacao
+;			Responsavel por realizar a movimentação do "A", controlando o final do visor
+;			A animação só ocorre se o flag ANDAR estiver ligado
+;			Cada vez que a rotina é chamada, a letra "A" anda uma posição para a direita
+;		- Controle
+;			Responsavel por determinar se a animação deve parar ou não
+;			Para isso, a rotina liga ou desliga o flag ANDAR
+;		- Wait: responsável por controlar o tempo entre dois "passos" do "A"
+;			Essa rotina bloqueia o processamento por um tempo determinado
+;			Isso impede que as outras duas rotinas sejam chamadas, por um determinado tempo
+;			São três versões dessa rotina
+;				- Wait_1: Sem tempo (velocidade maxima)
+;				- Wait_2: Com tempo, determinado por laço de instruções (o número de laços está no R5)
+;				- Wait_3: Com tempo, determinado por interrupção de timer (o número de interrupções a serem contadas está em R5)
+;
+;	- Para alterar a configuração, deve-se configurar o seguinte
+;		<<1>> Configurar a habilitação das interrupções (mov #xxx, INTE)
+;		<<2>> Selecionar a função de Wait: Wait_1, Wait_2 ou Wait_3
+;
+;	Configurações
+;		- animado_1 => Wait_1
+;			- mov #0,INTE
+;			- Wait_1
+;		- animado_2 => Wait_2
+;			- mov #0,INTE
+;			- Wait_2 (a constantes está em R5)
+;		- animado_3 => Wait_3
+;			- mov #h81,INTE
+;			- Wait_3 (anda o "A" com uma velocidade fixa e exata, programada em R5)
+;
+;**************************************************************************************************
+;
+
+
+;==========================================================================
+; Área Reservada
+
+; Acesso em 16 bits
+		org		hff80
+STACK:
+		daw		[31]		; Área reservada
+IVET:	dw		0			; Vetor de interrupção
+
+; Acesso em 8 bits
+		dab		[24]
+INTS:	db		0			; INTERRUPT STATUS: IP x x x . x x IPStec IPStim
+INTE:	db		0			; INTERRUPT ENABLE: IE x x x . x x IEStec IEStim
+TECST:	db		0			; Status do teclado
+TECDT:	db		0			; Dado do teclado
+VISOR:	dab		[36]		; Portas de acesso ao visor
+
+
+;==========================================================================
+;
+		org		0
+
+;
+;**************************************************************************************************
+; R5 é usado para determinar a temporização das rotinas Wait_2 e Wait_3
+; Observer que R5 está sendo usado única e exclusivamente para essa tarefa
+; Por esse motivo, não é necessário salvá-lo quando entrar na ISR
+		mov		#5,r5
+		
+;
+;**************************************************************************************************
+; Inicializa o processador e o hardware		
+		mov		#STACK,r6
+		clr		INTS			; Reset pedidos de interrupção
+		clr 	TECST			; Reset estado do hardware do teclado
+		mov		#isr,IVET		; Set Interrupt Service Rotine
+		
+;
+;**************************************************************************************************
+; Inicializa variaveis de operação das rotinas do programa
+		mov		#1,ANDAR			; ANDAR = 1
+		mov		#VISOR,POSICAO		; POSICAO = VISOR
+		
+		mov		r5,TICKCNT
+		
+;
+;**************************************************************************************************
+; Programa principal
+; <<1>> Configurar a habilitação das interrupções (mov #xxx, INTE)
+		mov		#h81,INTE		; Habilita as interrupções necessárias: TECLADO=0x82   TIMER=0x81
+main:
+		jsr		r7,Animacao
+		jsr		r7,Controle
+		jsr		r7,Wait
+		jmp		main
+		
+		
+;
+;**************************************************************************************************
+; Rotina de animação - responsável por fazer o "A" andar
+; Utiliza a variável ANDAR para decidir se deve ou não andar
+;	ANDAR==0 -> não andar
+;	ANDAR==1 -> andar
+Animacao:
+		mov		#'_',r1			; R1 = "_"
+		tst		ANDAR			; if (ANDAR) {
+		beq		Animacao_Fim
+		
+		mov		POSICAO,r0		;		*POSICAO = ' ';
+		mov		#' ',(r0)
+		
+		inc		r0				;		++POSICAO;
+		bne		Animacao_Inc	;		if (POSICAO==0)
+		mov		#VISOR,r0		;				POSICAO = VISOR;
+Animacao_Inc:
+		mov		r0,POSICAO
+		
+		mov		#'A',r1			;		R1 = 'A'
+		
+Animacao_Fim:					; }
+		mov		POSICAO,r0		; *POSICAO = R1;
+		mov		r1,(r0)
+		rts		r7				; return;
+
+;
+;**************************************************************************************************
+; Rotina de leitura de teclado
+; Se não tiver tecla, simplesmente retorna
+; Se tiver tecla, verifica se é SPACE
+; Se for SPACE, inverte o flag ANDAR
+;
+Controle:
+		jsr		r7,TeclaDisponivel	; if (TeclaDisponivel()) {
+		tst		r0
+		beq		Controle_Fim
+		
+		jsr		r7,GetTecla			;		if (GetTecla()==' ')
+		cmp		r0,#' '		
+		bne		Controle_Fim
+		
+		clr		r0					;				ANDAR = not(ANDAR)
+		tst		ANDAR
+		bne		Controle_Not
+		mov		#1,r0
+Controle_Not:
+		mov		r0,ANDAR
+	
+Controle_Fim:						; }
+		rts		r7					; return
+		
+;
+;**************************************************************************************************
+; Rotinas para a manipulação do hardware e interrupção (se houver) do teclado
+; TeclaDisponivel	-> Rotina que informa se algo foi digitado
+; GetTecla			-> Rotina que retorna a tecla digitada
+
+;
+; Rotina que informa se algo foi digitado
+TeclaDisponivel:
+		mov		TECST,r0
+		rts		r7
+
+;
+; Rotina que retorna a tecla digitada
+GetTecla:
+		mov		TECDT,r0
+		clr		TECST
+		rts		r7
+		
+;
+;**************************************************************************************************
+; Rotina "bloqueante" que controla o tempo entre "passos" do "A" no visor
+; Existem 3 versões
+
+; <<2>> Selecionar a função de Wait: Wait_1, Wait_2 ou Wait_3
+;Wait:	jmp		Wait_1
+;Wait:	jmp		Wait_2
+Wait:	jmp		Wait_3
+
+;
+; Versão 1 - Sem controle de tempo (velocidade máxima)
+Wait_1:
+		rts		r7
+		
+;
+; Versão 2 - Controle de tempo por laço de instruções
+; Entra: r5 -> constante que define o atraso de tempo
+Wait_2:
+		mov		r5,r0
+Wait_2_loop:
+		dec		r0
+		bne		Wait_2_loop
+		rts		r7
+		
+;
+; Versão 3 - Controle de tempo por monitoração da interrupcao
+; Entra: TICK -> flag que indica quando passou 1 segundo (gerado pela Interrupção)
+; Obs: A interrupção de timer deve estar ativa
+Wait_3:
+		tst		TICK
+		beq		Wait_3
+		clr		TICK
+		rts		r7
+		
+		
+;
+;**************************************************************************************************
+; Rotina de INTERRUPÇÃO
+; Só será chamada se as interrupções estiverem habilitadas
+isr:
+		mov		r0,-(r6)	; Salva registradores (não é necessário salvar o R5)
+		mov		r1,-(r6)
+		mov		r2,-(r6)
+		mov		r3,-(r6)
+		mov		r4,-(r6)
+
+		mov		INTS,r0		; Verifica se é INT do TIMER
+		and		#1,r0
+		beq		ISR2
+		jsr		r7,ISRtim	; Tratamento da INT do TIMER
+		and		#hFFFE,INTS	; Desliga bit de INT TIMER
+ISR2:
+
+		mov		(r6)+,r4	; Retorna os registradores da pilha
+		mov		(r6)+,r3
+		mov		(r6)+,r2
+		mov		(r6)+,r1
+		mov		(r6)+,r0
+
+		rti					; Return From Interrupt
+	
+; Tratamento das interrupções de timer
+ISRtim:
+		dec		TICKCNT				; if (--TICKCNT==0) {
+		bne		ISRtim_Fim
+		mov		r5,TICKCNT			;		TICKCNT = r5
+		
+		mov		#1,TICK				;		TICK = 1
+		
+ISRtim_Fim:
+		rts		r7					; }
+		
+		
+;
+;**************************************************************************************************
+; Variaveis do programa
+; Ocupam a memória logo após o final do programa		
+;
+TICKCNT:	dw		0		; Variavel usada para contar o número de interrupções de temporização
+TICK:		dw		0		; Flag que indica que passou 1 segundo, após o ultimo TICK
+ANDAR:		dw		0		; Flag que indica se a animação esta ligada (!=0) ou não (==0)
+POSICAO:	dw		0		; Endereço no visor da posição atual onde o 'A' está aparecendo
+
+		
+	
+	
+	
+	
+
+		

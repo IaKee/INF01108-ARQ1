@@ -1,0 +1,14 @@
+Símbolo         Valor Decimal   Valor Hexadecimal
+-------         -------------   -----------------
+STACK                   65408                FF80
+IVET                    65470                FFBE
+INTS                    65496                FFD8
+INTE                    65497                FFD9
+TECST                   65498                FFDA
+TECDT                   65499                FFDB
+VISOR                   65500                FFDC
+DISPLAY1                   17                  11
+DISPLAY1_1                 23                  17
+MSG0                       34                  22
+MSG1                       55                  37
+MSG2                       77                  4D

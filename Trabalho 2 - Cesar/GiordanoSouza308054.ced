@@ -1,0 +1,324 @@
+;Nome: Giordano Souza de Paula
+;Cartao UFRGS: 00308054
+;Trabalho 2 - Cesar - Kernel
+
+;A parte a ser desenvolvida vai dos enderecos 32768 até 65535
+ORG 0
+JMP _reset
+_APP:		equ	h0100
+_KRN_INT:	equ	h8000
+_IOAREA16:	equ	hFF80
+_IOAREA08:	equ	hFFC0
+STACK:		equ	_IOAREA16
+
+
+; Acesso em 16 bits
+	org	_IOAREA16
+	daw	[31]
+IVET:	dw	0			; Vetor de interrupção
+; Acesso em 8 bits
+	org	_IOAREA08
+	dab	[23]
+TIMDT:	db	0			; Registro de programação do timer
+INTS:	db	0			; INTERRUPT STATUS: IP x x x . x x IPStec IPStim
+INTE:	db	0			; INTERRUPT ENABLE: IE x x x . x x IEStec IEStim
+TECST:	db	0			; Status do teclado
+TECDT:	db	0			; Dado do teclado
+VISOR:	dab	[36]		; Portas de acesso ao visor
+CR:		equ	H0D
+BS:		equ	H08
+
+ORG _KRN_INT ;Endereco de inicio do programa
+
+Vet_0:	dw _reset
+Vet_1:	dw _kbhit
+Vet_2:	dw _getchar
+Vet_3:	dw _putchar
+Vet_4:	dw _putmsg
+Vet_5:	dw _setcursor
+Vet_6:	dw _start
+Vet_7:	dw _ready
+
+;VARIAVEIS E CONSTANTES
+CONTEUDO_R0:	EQU 0
+CONTEUDO_R1:	EQU 0
+CONTEUDO_R2:	EQU 0
+CONTEUDO_R3:	EQU 0
+CONTEUDO_R4:	EQU 0
+AUX_0:			EQU 0
+TEMPO_DEFINIDO:	EQU 0
+INICIO_DISPLAY:	EQU 65500
+DESCARTA_MSB:	EQU 255
+DISPLAY:		DAB	[36]
+TECLA:		DW 0
+
+;----------------------------------------------------------------------------------------------------------------------------------------------------------
+_reset: ;(end 8000h e 8001h)
+	;Essa função sera chamada com um jump, com o objetivo de zerar todos os registradores e variaveis
+		;-No final dessa funcao é executado um JMP _APP, conforme solicitado no enunciado do trabalho
+	;Reseta os registradores
+	CLR R0 ;R0 = 0 ...
+	CLR R1
+	CLR R2
+	CLR R3
+	CLR R4
+	CLR R5 ;Limpa o stack - Pesquisei sobre isso - acredito que nao causa problemas...
+	
+	;Inicializa variaveis
+	CLR CONTEUDO_R0
+	CLR CONTEUDO_R1
+	CLR CONTEUDO_R2
+	CLR CONTEUDO_R3
+	CLR CONTEUDO_R4
+	CLR AUX_0
+	CLR TEMPO_DEFINIDO
+	MOV #-1, TECLA
+	
+	CLR INTE
+	CLR INTS
+	MOV #250, TIMDT ;Define o periodo entre interrupcoes como 250 ms
+	MOV	#STACK, R6 ;Inicializa o stack pointer, conforme solicitado
+	JSR R7, DISPLAY_CLS_NULL ;Reseta o display (preenche com zeros - NULL)
+	CLR TECST ;Reseta o teclado
+	MOV	#ISR,IVET		; Set Interrupt Service Rotine
+	
+	JMP _APP ;Reinicia a execução do programa	
+;----------------------------------------------------------------------------------------------------------------------------------------------------------
+_kbhit: ;(end 8000h e 8003h)
+	CMP #-1, TECLA ;Verifica a ausencia de teclas
+	BEQ SEM_TECLA
+	
+	JMP COM_TECLA
+	
+	SEM_TECLA:
+	MOV #0, R0 ;Retorna zero se nao houver nenhuma tecla digitada
+	JMP RTS_R7
+	
+	COM_TECLA:
+	MOV #1, R0 ;Retorna qualquer outro valor se uma tecla for digitada
+	JMP RTS_R7
+;----------------------------------------------------------------------------------------------------------------------------------------------------------	
+_getchar: ;(end 8004h e 8005h) ;Interrompe a execucao do programa
+	CMP #-1, TECLA ;Verifica a ausencia de teclas
+	BEQ _getchar	   ;Fica em loop tentando encontrar alguma tecla digitada
+	MOV TECLA, R0 ;Copia o caractere para R0 (excluindo-o posteriormente)
+	JSR R7, LIMPA_BUFFER ;Limpa o buffer da tecla digitada
+	JMP RTS_R7
+;----------------------------------------------------------------------------------------------------------------------------------------------------------
+_putchar: ;(end 8006h e 8007h)
+	;Rotina que imprime o conteudo de R0 (caractere ASCII - parte menos significativa) na posicao atual do cursor e avanca uma posicao, exceto se o cursor ja estiver na posicao 35
+		;-Se for pressionado um backspace, o cursor deve retornar uma posicao a esquerda, limpando o conteudo daquela posicao, se o cursor ja estiver na posicao zero, o backspace é ignorado
+		;-Caracteres enviados quando o cursor ja esta na posicao 35 tambem devem ser ignorados
+		;-Foi considerado que a posicao do cursor esta armazenada no R1 (valores de 0 a 35)
+	CMP CONTEUDO_R1, #0
+	BLT return_putchar ;Se a posicao for menor do que zero, nao permite, encerrando a funcao
+	CMP CONTEUDO_R0, #35
+	BGT return_putchar ;Se a posicao do cursor for maior do que a maior permitida (posicao 35)
+	
+	;Guarda o conteudo dos registradores em variaveis
+	JSR R7, GUARDA_REGISTRADORES
+	
+	;Ajusta a posicao do caractere
+	ADD INICIO_DISPLAY, CONTEUDO_R1 ;CONTEUDO_R1 = R1 + INICIO_DISPLAY
+	;Imprime caractere solicitado
+	MOV CONTEUDO_R0, #CONTEUDO_R1
+	MOV #'_', #CONTEUDO_R1+1
+	INC R1 ;Incrementa a posicao do cursor
+	
+	;Fim da subrotina
+	return_putchar: 
+	JMP RTS_R7
+;----------------------------------------------------------------------------------------------------------------------------------------------------------
+_putmsg: ;(end 8008h e 8009h)
+	;Rotina que imprime uma string de caracteres no display, a partir da posicao atual do cursor
+		;-R1 foi considerado como a posicao inicial do cursor
+		;-A insercao da mensagem acaba quando um byte com valor zero é encontrado (ASCIIZ)
+	;Guarda o conteudo dos registradores em variaveis
+	JSR R7, GUARDA_REGISTRADORES
+	
+	CMP CONTEUDO_R1, #0
+	BLT return_putmsg ;Se a posicao for menor do que zero, nao permite, encerrando a funcao
+	CMP CONTEUDO_R0, #35
+	BGT return_putmsg ;Se a posicao do cursor for maior do que a maior permitida (posicao 35)	
+	
+	ADD #DISPLAY, CONTEUDO_R1 ;Incrementa a primeira posicao do display a posicao do cursor (ajustando a primeira posicao)
+	DEC R0 ;Para utilizar os bytes menos significativos - por algum motivo - é preciso decrementar (nao entendi...)
+
+	WHILE_PUTMSG:
+	MOV (R0), R3
+	AND DESCARTA_MSB, R3
+	CMP R3, #0			;Procura por um byte zero no final da mensagem (ASCIIZ string)
+	BEQ return_putmsg
+
+	MOV R3, (R1)		;Se nao encontrar continua imprimindo a mensagem
+	INC R0				;Pega o proximo caractere
+
+	CMP R1, #65535
+	BGE DISPLAY_OVERFLOW	;Verifica se o cursor ja chegou na ultima posicao do display (35 + 65500)
+	INC R1					;Incrementa a posicao do cursor no display
+	JMP WHILE_PUTMSG
+	
+	DISPLAY_OVERFLOW:
+	MOV #VISOR, R1 ;Caso algum caractere seja mandado para alguma posicao depois da ultima do display, o cursor é apontado de volta para a primeira casa
+	JMP WHILE_PUTMSG	
+	
+	return_putmsg:
+	JMP RESGATA_REGISTRADORES
+	JMP RTS_R7
+
+;----------------------------------------------------------------------------------------------------------------------------------------------------------
+_setcursor: ;(end 800Ah e 800Bh)
+	;Foi considerado que o valor do cursor deve ser de 0 a 35 (a constante INICIO_DISPLAY é somada posteriormente...)
+	CMP R0, #0
+	BLT CURSOR_DESAPARECE
+	CMP R0, #35
+	BGT CURSOR_DESAPARECE
+	
+	MOV R0, R1 ;Se a posicao é valida, esta dentro do espaco disponivel do display
+	JMP RTS_R7
+	
+	CURSOR_DESAPARECE: ;Se a posicao do cursor for invalida, faz este desaparecer...
+	MOV 36, R1
+	JMP RTS_R7
+;----------------------------------------------------------------------------------------------------------------------------------------------------------
+_start: ;(end 800Ch e 800Dh)
+	MOV R0, TEMPO_DEFINIDO
+	MOV #0, AUX_0
+	JMP RTS_R7
+;----------------------------------------------------------------------------------------------------------------------------------------------------------
+_ready: ;(end 800E e 800F)
+	JSR R7 GUARDA_REGISTRADORES
+	CMP TEMPO_DEFINIDO, AUX_0
+	BGE TIME_OVER
+	
+	MOV #0, R0 ;Retorna zero, indicando que o tempo definido ainda nao passou
+	JMP RTS_R7
+	
+	TIME_OVER:
+	MOV #1, R0
+	MOV #1, R1
+	JMP RTS_R7
+;----------------------------------------------------------------------------------------------------------------------------------------------------------
+;PROGRAMA BASE - animado.ced
+isr: ;-Arrumar aqui
+	JSR R7, GUARDA_REGISTRADORES ; Salva os registradores
+	MOV	INTS, R0		; Verifica se é INT do TIMER
+	AND	#1, R0
+	BEQ	ISR2
+	JSR	r7,ISRtim	; Tratamento da INT do TIMER
+	AND	#hFFFE,INTS	; Desliga bit de INT TIMER
+	
+ISR2:
+	JSR R7, RESGATA_REGISTRADORES
+	RTI					; Return From Interrupt
+
+; Tratamento das interrupções de timer
+ISRtim:
+	ADD #250, AUX_0
+	
+ISRtim_Fim:
+	RTS R7					; }
+	
+GUARDA_REGISTRADORES:
+	MOV R0, CONTEUDO_R0
+	MOV R1, CONTEUDO_R1
+	MOV R2, CONTEUDO_R2
+	MOV R3, CONTEUDO_R3
+	MOV R4, CONTEUDO_R4
+	JMP RTS_R7
+	
+RESGATA_REGISTRADORES:
+	MOV CONTEUDO_R0, R0
+	MOV CONTEUDO_R1, R1
+	MOV CONTEUDO_R2, R2
+	MOV CONTEUDO_R3, R3
+	MOV CONTEUDO_R4, R4
+	JMP RTS_R7
+	
+DISPLAY_CLS_SPACE:
+	;Rotina que preenche o display com espacos [ASCII 32]
+	MOV #32, 65500
+    MOV #32, 65501
+    MOV #32, 65502
+    MOV #32, 65503
+    MOV #32, 65504      
+    MOV #32, 65505            
+    MOV #32, 65506       
+    MOV #32, 65507      
+    MOV #32, 65508          
+    MOV #32, 65509        
+    MOV #32, 65510            
+    MOV #32, 65511         
+    MOV #32, 65512       
+    MOV #32, 65513            
+    MOV #32, 65514            
+    MOV #32, 65515           
+    MOV #32, 65516            
+    MOV #32, 65517          
+    MOV #32, 65518           
+    MOV #32, 65519          
+    MOV #32, 65520        
+    MOV #32, 65521       
+    MOV #32, 65522           
+    MOV #32, 65523         
+    MOV #32, 65524            
+    MOV #32, 65525          
+    MOV #32, 65526           
+    MOV #32, 65527          
+    MOV #32, 65528           
+    MOV #32, 65529         
+    MOV #32, 65530          
+    MOV #32, 65531         
+    MOV #32, 65532
+    MOV #32, 65533
+    MOV #32, 65534
+    MOV #32, 65535
+	CLR R1 ;Reseta o cursor
+	JMP RTS_R7
+	
+DISPLAY_CLS_NULL:
+	;Rotina que preenche o display com zeros [ASCII NULL]
+	CLR 65500             ; limpa LED 00
+    CLR 65501             ; limpa LED 01
+    CLR 65502             ; limpa LED 02
+    CLR 65503             ; limpa LED 03
+    CLR 65504             ; limpa LED 04
+    CLR 65505             ; limpa LED 05
+    CLR 65506             ; limpa LED 06
+    CLR 65507             ; limpa LED 07
+    CLR 65508             ; limpa LED 08
+    CLR 65509             ; limpa LED 09
+    CLR 65510             ; limpa LED 10
+    CLR 65511             ; limpa LED 11
+    CLR 65512             ; limpa LED 12
+    CLR 65513             ; limpa LED 13
+    CLR 65514             ; limpa LED 14
+    CLR 65515             ; limpa LED 15
+    CLR 65516             ; limpa LED 16
+    CLR 65517             ; limpa LED 17
+    CLR 65518             ; limpa LED 18
+    CLR 65519             ; limpa LED 19
+    CLR 65520             ; limpa LED 20
+    CLR 65521             ; limpa LED 21
+    CLR 65522             ; limpa LED 22
+    CLR 65523             ; limpa LED 23
+    CLR 65524             ; limpa LED 24
+    CLR 65525             ; limpa LED 25
+    CLR 65526             ; limpa LED 26
+    CLR 65527             ; limpa LED 27
+    CLR 65528             ; limpa LED 28
+    CLR 65529             ; limpa LED 29
+    CLR 65530             ; limpa LED 30
+    CLR 65531             ; limpa LED 31
+    CLR 65532             ; limpa LED 32
+    CLR 65533             ; limpa LED 33
+    CLR 65534             ; limpa LED 34
+    CLR 65535             ; limpa LED 35
+	CLR R1 ;Reseta o cursor
+	JMP RTS_R7
+
+LIMPA_BUFFER:
+	MOV #-1, TECLA
+	JMP RTS_R7
+RTS_R7:
+	RTS R7 ;Fim de uma subrotina (utilizado multiplas vezes em varios momentos do codigo...

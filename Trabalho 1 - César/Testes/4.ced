@@ -1,0 +1,144 @@
+;Nome: Giordano Souza de Paula
+;Cartao UFRGS: 00308054
+;Carregar o kernel fornecido e realizar carga parcial no processador Cesar - dos endereços 256 até 16383!!!
+;=======INICIO DO PROGRAMA PRINCIPAL=========;
+ORG 256 ;Endereco de inicio do programa
+
+LOOP_IDENTIFICACAO: ;Imprime a mensagem de identificacao na tela
+	MOV #MSG_IDENTIFICACAO, R0 ;Coloca a string da mensagem 1 no R0
+	MOV #putmsg, R5 ;Coloca o valor 3 no R5, indicando a operacao putmsg(R0)
+	JSR R7, _SISTEMA ;Pula para a subrotina do sistema, onde a operacao solicitada é executada
+
+JMP_WAIT_ENTER_0:
+	MOV #getchar, R5 ;Coloca o valor 1 no R5, indicando a operacao R0=getchar()
+	JSR R7, _SISTEMA ;Pula para a subrotina do sistema, onde a operacao solicitada é executada
+	
+	CMP #ENTER, R0 ;Compara o valor da tecla digitado com o valor da tecla enter (13 na tabela ASCII)
+	BNE JMP_WAIT_ENTER_0 ;Se nao for a tecla enter, inicia o loop novamente
+	
+PEDE_NUM_PAREDE:
+	MOV #0, MSB_PAREDE ;Zera o valor de parede armazenado anteriormente, para uma nova operacao
+	MOV #0, LSB_PAREDE
+	
+	JSR R7, LIMPA_DISPLAY
+	MOV #MSG_ASKWALL, R0 ;Coloca a string da mensagem 2 no R0
+	MOV #putmsg, R5 ;Coloca o valor 3 no R5, indicando a operacao putmsg(R0)
+	JSR R7, _SISTEMA	
+	
+	;Move o cursor para a posicao correta - onde os numeros devem aparecer
+	MOV #setcursor, R5
+	MOV #33, R0
+	JSR R7, _SISTEMA
+	
+	MOV #getchar, R5
+	JSR R7, _SISTEMA
+	
+	CMP #ENTER, R0 ;Verifica se a tecla enter foi digitada
+	BEQ FIM_PROGRAMA ;Se constatado um enter sem nenhum numero de parede digitado, pula para o fim do programa
+	CMP #BACKSPACE, R0
+	BEQ PEDE_NUM_PAREDE ;Se constatado um backspace, reinicia a rotina, zerando os valores
+	
+	;Se foi digitado um caractere - diferente de enter - no numero da parede
+	MOV #putmsg, R5 
+	JSR R7, _SISTEMA ;Imprime o caractere que foi digitado no display
+	MOV R0, MSB_PAREDE ;Guarda o valor digitado de MSB
+	
+	MOV #getchar, R5
+	JSR R7, _SISTEMA ;Manda o programa analisar um caractere novo
+	
+	CMP #ENTER, R0 
+	BEQ TESTA_DIGITOS_PAREDE ;Se constatado um enter, pula para a rotina de checagem da parede solicitada
+	CMP #BACKSPACE, R0
+	BEQ PEDE_NUM_PAREDE ;Se constatado um backspace, reinicia a rotina, zerando os valores
+	
+	
+	MOV R0, LSB_PAREDE
+	MOV #putmsg, R5
+	JSR R7, _SISTEMA ;Imprime o caractere que foi digitado no display
+	
+	MOV #getchar, R5
+	JSR R7, _SISTEMA ;Manda o programa analisar um caractere novo
+	
+	CMP #ENTER, R0 
+	BEQ TESTA_DIGITOS_PAREDE ;Se constatado um enter, pula para a rotina de checagem da parede solicitada
+	JMP ERRO_PAREDE ;Se o caractere digitado for diferente, ou maior do que o maximo esperado, indica um erro na tela!
+
+TESTA_DIGITOS_PAREDE:
+	HLT
+	
+ERRO_PAREDE:
+	HLT
+	
+FIM_PROGRAMA:
+	JSR R7, LIMPA_DISPLAY
+	MOV #MSG_FIM_PROGRAMA, R0
+	MOV #putmsg, R5
+	JSR R7, _SISTEMA
+	HLT ;Fim de execucao do programa, solicitado pelo usuario
+	
+LIMPA_DISPLAY: ;Subrotina para deixar o display vazio - sem nenhum caractere
+		;Re-ajustando o cursor, alterando a ultima rotina chamada, devido a um erro encontrado no Kernel (ver lista)
+		MOV #setcursor, R5
+		MOV #0, R0
+		JSR R7, _SISTEMA
+	MOV #setcursor, R5
+	MOV #0, R0 ;Zera R0 - Essa posicao sera a nova posicao do cursor do display - O movendo para a posicao zero
+	JSR R7, _SISTEMA ;Executa a rotina do sistema, atualizando a posicao do cursor para o inicio deste
+	MOV #MSG_CLEAR_SCREEN, R0 ;Coloca a string da mensagem 0 no R0
+	MOV #putmsg, R5 ;Coloca o valor 3 no R5, indicando a operacao putmsg(R0)
+	JSR R7, _SISTEMA ;Pula para a subrotina do sistema, onde a operacao solicitada é executada
+		;Re-ajustando o cursor, alterando a ultima rotina chamada, devido a um erro encontrado no Kernel (ver lista)
+		MOV #setcursor, R5
+		MOV #0, R0
+		JSR R7, _SISTEMA
+	RTS R7 ;Retorna para o ponto onde a rotina foi chamada no programa principal
+	
+	
+;============Problemas encontrados ao longo do desenvolvimento do programa===============;
+;-O kernel nao permite que a mesma funcao seja chamada duas vezes seguidas - Erro constatado com a funcao putmsg
+;-As funcoes definidas nas contantes nao se mostraram funcionais com o comando DB, atingi o resultado esperado apenas quando usei o comando EQU
+
+;===========Constantes utilizadas - definidas pelo kernel=============;
+ORG 15000 
+kbhit:		EQU	0
+getchar:	EQU	1
+putchar:	EQU	2
+putmsg:		EQU	3
+setcursor:	EQU	4
+setwall:	EQU	5
+read:		EQU	6
+move00:		EQU	7
+move:		EQU	8
+moving:		EQU	9
+getcamera:	EQU	10
+_SISTEMA:	EQU	h0080
+	;Caracteres ASCII
+ENTER:		EQU 13
+BACKSPACE:	EQU 8
+SPACE:		EQU 20
+ASCII_ZERO:		EQU 30
+ASCII_UM:		EQU 31
+ASCII_DOIS:		EQU 32
+ASCII_TRES:		EQU 33
+ASCII_QUATRO: 	EQU	34
+ASCII_CINCO:	EQU 35
+ASCII_SEIS:		EQU 36
+ASCII_SETE:		EQU 37
+ASCII_OITO:		EQU 38
+ASCII_NOVE:		EQU 39
+;=========== Variaveis utilizadas ao longo do programa ===================;
+AUX0: DB 0
+MSB_PAREDE: DB 0
+LSB_PAREDE: DB 0
+
+
+;=========== MENSAGENS UTILIZADAS (display de 36 caracteres) =============;
+MSG_CLEAR_SCREEN: dab '                                    ',0 ;Espaco vazio, para limpar o display entre mensagens
+MSG_IDENTIFICACAO: dab 'Autor:Giordano Souza - Cartao:308054',0 ;Mensagem de identificacao exibida no inicio do programa
+MSG_ASKWALL: dab 'Informe a parede (BS- corrige): ',0 ;Mensagem de solicitacao para uma nova parede
+MSG_ERRO_PAREDE: dab 'Numero da parede invalido!',0
+MSG_FIM_PROGRAMA: dab 'Encerrando programa... Ate logo!',0
+MSG4_1: dab 'Parede ',0
+MSG4_2: dab ', Largura=',0
+MSG4_3: dab ', Altura=',0
+MSG_TESTE: dab 'Funcionou :D',0

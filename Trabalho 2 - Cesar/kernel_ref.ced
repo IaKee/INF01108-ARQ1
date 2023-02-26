@@ -1,0 +1,193 @@
+;
+;
+;******************************************************************************
+;
+;	Arquivo de Referência para iniciar o desenvolvimento do kernel
+;
+;	versão: 2019.2
+;
+;	Áreas de memória
+;
+;	8000 - FF7F		_KRN_INT
+;					Área de Kernel para implementação dos alunos
+;
+;	FF80 - FFBF 	_IOAREA16
+;					Area de perifericos, acessada na base 16 bits
+;
+;	FFC0 - FFFF		_IOAREA08
+;					Area de perifericos, acessada na base 8 bits
+;					
+;******************************************************************************
+
+_APP:		equ	h0100
+_KRN_INT:	equ	h8000
+_IOAREA16:	equ	hFF80
+_IOAREA08:	equ	hFFC0
+
+
+;
+;------------------------------------------------------------------------------
+;	Área reservada para os periféricos
+;------------------------------------------------------------------------------
+
+; Acesso em 16 bits
+	org	_IOAREA16
+	daw	[31]
+IVET:	dw	0			; Vetor de interrupção
+
+; Acesso em 8 bits
+	org	_IOAREA08
+	dab	[23]
+TIMDT:	db	0			; Registro de programação do timer
+INTS:	db	0			; INTERRUPT STATUS: IP x x x . x x IPStec IPStim
+INTE:	db	0			; INTERRUPT ENABLE: IE x x x . x x IEStec IEStim
+TECST:	db	0			; Status do teclado
+TECDT:	db	0			; Dado do teclado
+VISOR:	dab	[36]		; Portas de acesso ao visor
+
+CR:			equ	H0D
+BS:			equ	H08
+
+
+		
+	
+;
+;------------------------------------------------------------------------------
+;	Area para o kernel
+;	Inicialização (reset)
+;	Implementacao dos tratadores de interrupcao
+;	Funções para usa do aplicação
+;------------------------------------------------------------------------------
+		org		_KRN_INT
+Vet_0:	dw		_reset
+Vet_1:	dw		_kbhit
+Vet_2:	dw		_getchar
+Vet_3:	dw		_putchar
+Vet_4:	dw		_putmsg
+Vet_5:	dw		_setcursor
+Vet_6:	dw		_start
+Vet_7:	dw		_ready
+	
+
+	
+;------------------------------------------------------------------------------
+;	Código de RESET (BOOT) do processador/interrupção
+;------------------------------------------------------------------------------
+_reset:
+; 1) Desabilitar o sistema de interrupções
+; 2) Inicializar o stack pointer (SP = R6)
+; 3) Inicializar as variáveis internas usadas pelo sistema de interrupções (IVET, INTE, etc.)
+; 4) Inicializar as variáveis internas do kernel
+; 5) Inicializar o teclado zerando o byte de estado (TECST, endereço 65498)
+; 6) Inicializar o timer
+; 7) Limpar o visor
+; 8) Habilitar interrupções
+; 9) Retornar para o programa de aplicação com um desvio para o endereço H0100 da memória
+		jmp		_APP
+
+	
+
+
+;------------------------------------------------------------------------------
+;	BOOL kbhit(void)
+;
+;Funçao:
+;	Informa se alguma tecla foi digitada.
+;	Não bloqueia esperando pelo teclado.
+;Retorna:
+;	Se R0==0, não há tecla
+;	Se R0!=0, há tecla
+;------------------------------------------------------------------------------
+_kbhit:
+		rts		r7
+
+	
+;------------------------------------------------------------------------------
+;	CHAR	getchar(void)
+;
+;Funçao:
+;	Bloqueia aguardando que alguma tecla seja digitada.
+;	Se já houver uma tecla digitada, retorna a tecla imediatamente.
+;	Essa função não coloca os caracteres digitados no visor.
+;Retorna:
+;	R0 == tecla digitada
+;------------------------------------------------------------------------------
+_getchar:
+		rts		r7
+
+	
+;------------------------------------------------------------------------------
+;	VOID	putchar(char)
+;
+;Funçao:
+;	Escreve um caractere no visor, na posição do cursor.
+;	Incrementa a posição do cursor, se for um caractere visível.
+;		-> Se a posição do cursor for maior do que 35, o cursor deve desaparecer.
+;	Decrementa a posição do cursor, se o caractere for um BS (Back-Space, ASCI H08).
+;		-> Ignora o BS, caso a posição do cursor seja 0
+;	
+;Entra:
+;	R0 == código ASCII do caractere a ser colocado no visor
+;------------------------------------------------------------------------------
+_putchar:
+		rts		r7
+
+	
+;------------------------------------------------------------------------------
+;	VOID	putmsg(char *)
+;
+;Funçao:
+;	Escreve um string no visor, a partir da posição do cursor.
+;	Um string é uma sequencia de bytes terminada pelo byte H00.
+;	Ajusta o cursor, para cada caractere do string, da mesma forma como descrito na função putchar.
+;Entra:
+;	R0 == endereço do string
+;------------------------------------------------------------------------------
+_putmsg:
+		rts		r7
+
+	
+;------------------------------------------------------------------------------
+;	void setcursor(short pos)
+;
+;Funçao:
+;	Altera a posição do cursor, representado pelo caractere “_”.
+;	Para isso, apaga o cursor da sua posição atual no visor e escreve o cursor na nova posição.
+;	Caso o novo valor seja maior do que 35, o cursor deverá “desaparecer”.
+;Entra:
+;	R0 = nova posição do cursor
+;------------------------------------------------------------------------------
+_setcursor:
+		rts		r7
+		
+
+		
+;------------------------------------------------------------------------------
+;	void	start (short valor)
+;
+;Funçao:
+;	Inicializa uma temporização
+;	Se for chamada, novamente, antes do tempo atingir o seu final, um novo tempo será programado.
+;	Essa função deve ser usada em conjunto com a função _ready
+;Entra:
+;	R0 = valor do tempo, em milisegundos
+;------------------------------------------------------------------------------
+_start:
+		rts		r7
+		
+
+;------------------------------------------------------------------------------
+;	bool ready(void)
+;
+;Funçao:
+;	Informa se o tempo programado pela função _start esgotou-se.
+;Retorna:
+;	R0==0, se o tempo programado não se esgotou.
+;	R0<>0, se o tempo programado estogou-se
+;------------------------------------------------------------------------------
+_ready:
+		rts		r7
+
+
+	
+

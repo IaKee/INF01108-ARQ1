@@ -1,0 +1,45 @@
+;Nome: Giordano Souza de Paula
+;Cartao UFRGS: 00308054
+
+;==================INFO (excluir)==========================================================================
+;Display tem 36 caracteres
+
+;Esboco do programa
+;WHILE_ID:
+;while(!=ENTER) {
+;	printf("Autor: Giordano Souza"); //21 caracteres
+;	delay(segundos);
+;	clear_screen();
+;	printf("Cartao UFRGS: 00308054"); //22 caracteres
+;	delay(segundos);
+;	clear_screen();
+;	JMP WHILE_ID
+;}
+;JMP WHILE_PAREDE //Se sair do while_id vai para o while parede
+
+;WHILE_PAREDE: //Se o enter for apertado, sai da tela inicial
+;clear_screen();
+;printf("Informe a parede: ");
+;WHILE_PAREDE:
+;while(!=ENTER){
+	;getchar(); //Para o programa, esperando que uma tecla seja digitada para uma proxima acao 
+;
+
+;=========CARGA PARCIAL 256 - 16383
+;====AREA RESERVADA PROGRAMAS CESAR==========;
+;
+;=======INICIO DO PROGRAMA PRINCIPAL=========;
+ORG 256 ;Endereco de inicio do programa
+MOV #MSG1, R0
+MOV #3, R5
+JSR R7,128
+
+HLT
+;===========MENSAGENS UTILIZADAS=============;
+MSG0: dab '                          ',0
+MSG1: dab 'Autor:Giordano Souza - Cartao:308054',0
+MSG2: dab 'Informe a parede: ',0
+MSG3: dab 'Numero da parede invalido!'
+MSG4_1: dab 'Parede ',0
+MSG4_2: dab ', Largura=',0
+MSG4_3: dab ', Altura=',0

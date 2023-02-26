@@ -1,11 +1,9 @@
-# ARQ1 - Assembly Programming for Ramses and César Processors
+# INF01108 - ARQ1 - Assembly Programs for Ramses, César, and Intel 8086
 
-This repository contains programs that I developed during my studies in the course of Computer Engineering at UFRGS, specifically in the discipline of Computer Architecture 1 (INF01108) taught by Professor Renato Perez Ribas.
+This repository contains programs developed in Assembly Language for the Ramses and César educational processors, as well as the Intel 8086 architecture. These programs were developed as part of the course "INF01108 - Computer Architecture 1" at the Federal University of Rio Grande do Sul (UFRGS), taught by Professor Renato Perez Ribas.
 
-The programs were written in assembly language for the Ramses and César processors, which are didactic processors used in the discipline. They were designed to illustrate concepts and techniques related to computer organization, such as memory addressing modes, arithmetic and logic operations, and control flow.
+The Ramses and César processors were used in practical laboratory activities to learn about the fundamental concepts of computer architecture, while the Intel 8086 programs were developed as a final project for the course. The programs cover a variety of topics, including arithmetic and logical operations, control structures, and memory management.
 
-The repository is organized into subdirectories, each containing programs related to a specific topic covered in the discipline. The code is well-commented and documented, making it easy to understand and modify.
+All programs are organized in their respective directories, along with a README file that provides a brief description of each program and instructions on how to assemble and run them. The programs were developed using the NASM assembler, and some of them require additional tools such as the DOSBox emulator.
 
-By sharing this repository, I hope to contribute to the learning and development of other students interested in computer architecture and assembly programming.
-
-Feel free to clone, study, modify, and use the programs in this repository, under the terms of the MIT License.
+This repository serves as a collection of my work throughout the course and as a resource for anyone interested in learning Assembly Language programming. Contributions and feedback are always welcome!

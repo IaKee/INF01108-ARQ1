@@ -1,0 +1,143 @@
+ORG 130
+MSB_s:		DB 0
+LSB_s:		DB 0
+cte_1:		DB 1
+cte_0:		DB 0
+metade_x:	DB 0
+metade_x_cte:	DB 0
+only_once:	DB 1
+i:		DB 0
+k:		DB 0
+x_inteiro:	DB 0
+
+ORG 0 ;INICIO DO PROGRAMA
+iniciop:LDA cte_0 ;Comeca zerando as variaveis
+	STA metade_x
+	STA MSB_s
+	STA LSB_s
+	LDA cte_1 ;Define as variaveis como 1
+	STA only_once
+	LDA 128 ;Carrega x
+	ROR ;Tenta dividir por dois
+	JNC iniciol ;Se nao der carry, inicia
+	LDA 128
+	SUB cte_1
+	SHR
+	JMP iniciol
+iniciol:STA metade_x
+	LDA 129	
+	JZ caso0 ;Pula para o enderco do caso 0
+	SUB cte_1
+	JZ caso1
+	SUB cte_1
+	JZ caso2
+;==========INICIO=DO=CASO=0================;
+caso0:	LDA 128
+	JZ end_FIM
+	LDA metade_x
+	JZ end_to_fim
+	LDA 128
+loopsubtract: SUB metade_x
+	JZ sedivisivel
+	JN nsoma1MSB	
+	JP loopsubtract	
+sedivisivel: LDA LSB_s
+	ADD cte_1
+	STA LSB_s
+	JC soma1MSB
+	JMP nsoma1MSB
+soma1MSB: LDA MSB_s
+	ADD cte_1
+nsoma1MSB:LDA metade_x
+	SUB cte_1
+	STA metade_x 
+	JMP caso0
+end_to_fim: LDA only_once
+	JZ end_FIM
+	SUB cte_1
+	STA only_once 
+	LDA LSB_s
+	ADD cte_1
+	STA LSB_s
+	JC soma1MSB
+	JMP end_FIM
+;============FIM=DO=CASO=0================;
+;==========INICIO=DO=CASO=1================;
+caso1: 		LDA 128
+		JZ end_FIM
+		LDA metade_x
+		STA metade_x_cte
+		JZ end_to_fim1
+		JN end_FIM
+		LDA 128
+loopsubtract_1:	SUB metade_x
+		JZ sedivisivel1
+		JN nsoma1MSB1
+		JP loopsubtract_1
+sedivisivel1:	LDA LSB_s
+		ADD metade_x_cte
+		STA LSB_s
+		JMP 140
+ORG 140
+		JC soma1MSB1
+		JMP nsoma1MSB1
+soma1MSB1: 	LDA MSB_s
+		ADD cte_1
+		STA MSB_s
+
+nsoma1MSB1:	LDA metade_x
+		SUB cte_1
+		STA metade_x 
+		JMP caso1
+end_to_fim1: 	LDA LSB_s
+		ADD 128
+		STA LSB_s
+		JC soma1MSB1
+		JMP end_FIM
+
+;============FIM=DO=CASO=1================;
+;==========INICIO=DO=CASO=2================;
+caso2:		LDA 128
+		JZ end_FIM
+		LDA 128 ;Carrega n
+		STA i
+
+inicioloopi:	LDA 128
+		STA x_inteiro
+		LDA i
+		JZ end_FIM
+		LDA x_inteiro
+
+loopsubtract2:	SUB i
+		JZ sedivisivel2
+		JN ndivisivel2
+		JP loopsubtract2
+		
+
+sedivisivel2:	LDA i
+		STA k
+inicioloopk:	LDA k
+		JZ ndivisivel2 ;decrementa 1 de i e comeca novamente
+		LDA LSB_s
+		ADD i
+		STA LSB_s
+		JNC semcarry2
+		LDA MSB_s
+		ADD cte_1
+		STA MSB_s
+
+semcarry2:	LDA k
+		SUB cte_1
+		STA k
+		JMP inicioloopk
+
+ndivisivel2:	LDA i
+		SUB cte_1
+		STA i
+		JMP inicioloopi
+		
+		
+		;todos os divisores ao quadrado
+;============FIM=DO=CASO=2================;
+ORG 255
+end_FIM: HLT

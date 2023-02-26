@@ -1,0 +1,221 @@
+;Nome: Giordano Souza de Paula
+;Cartao UFRGS: 00308054
+;Carregar o kernel fornecido e realizar carga parcial no processador Cesar - dos endereços 256 até 16383!!!
+ORG 256 ;Endereco de inicio do programa
+
+;=======ENDERECOS AUXILIARES PARA JUMPS CONDICIONAIS FORA DA FAIXA PERMITIDA==========;
+
+	
+;=========================INICIO DO PROGRAMA PRINCIPAL================================;
+LOOP_IDENTIFICACAO: ;Imprime a mensagem de identificacao na tela
+	MOV #MSG_IDENTIFICACAO, R0 ;Coloca a string da mensagem 1 no R0
+	MOV #putmsg, R5 ;Coloca o valor 3 no R5, indicando a operacao putmsg(R0)
+	JSR R7, _SISTEMA ;Pula para a subrotina do sistema, onde a operacao solicitada é executada
+
+JMP_WAIT_ENTER_0:
+	MOV #getchar, R5 ;Coloca o valor 1 no R5, indicando a operacao R0=getchar()
+	JSR R7, _SISTEMA ;Pula para a subrotina do sistema, onde a operacao solicitada é executada
+	
+	CMP #ENTER, R0 ;Compara o valor da tecla digitado com o valor da tecla enter (13 na tabela ASCII)
+	BNE JMP_WAIT_ENTER_0 ;Se nao for a tecla enter, inicia o loop novamente
+
+PEDE_NUM_PAREDE:
+	JSR R7, DISPLAY_CLS
+	JSR R7, ZERA_VARIAVEIS ;Zera algumas variaveis auxiliares
+	
+	MOV #MSG_ASKWALL, R0 ;Coloca a string da mensagem 2 no R0
+	MOV #putmsg, R5 ;Coloca o valor 3 no R5, indicando a operacao putmsg(R0)
+	JSR R7, _SISTEMA	
+	
+	SE_POS_INICIAL:
+	;Move o cursor para a posicao inicial - onde os numeros devem aparecer
+	MOV #setcursor, R5
+	MOV #28, R0
+	JSR R7, _SISTEMA
+	
+	LOOP_DIGITA_PAREDE:	
+	MOV #getchar, R5
+	JSR R7, _SISTEMA
+	
+	CMP R0, #ENTER
+	BEQ ANALISA_SOLICITACAO_PAREDE
+	CMP R0, #BACKSPACE
+	BEQ CORRIGE_CARACTERE
+	
+	MOV #putchar, R5
+	JSR R7, _SISTEMA
+	
+	JMP LOOP_DIGITA_PAREDE
+
+ANALISA_SOLICITACAO_PAREDE:
+	HLT
+	
+CORRIGE_CARACTERE:
+	MOV #32, R0
+	MOV #putchar, R5
+	JSR R7, _SISTEMA
+	
+	;Decrementa uma posicao
+	DEC R1 
+	MOV R1, R0
+	MOV #setcursor, R5
+	JSR R7, _SISTEMA
+	
+	;Decrementa uma posicao
+	DEC R1 
+	MOV R1, R0
+	MOV #setcursor, R5
+	JSR R7, _SISTEMA
+	
+	CMP R1, #28
+	BLE SE_POS_INICIAL
+	
+	MOV #32, R0
+	MOV #putchar, R5
+	JSR R7, _SISTEMA
+	
+	;Decrementa uma posicao
+	;DEC R1 
+	;MOV R1, R0
+	;MOV #setcursor, R5
+	;JSR R7, _SISTEMA
+	
+	;MOV #SPACE, R0
+	;MOV #putchar, R5
+	;JSR R7, _SISTEMA
+	
+	;DEC R1 ;Decrementa uma posicao
+	;MOV #setcursor, R5
+	;JSR R7, _SISTEMA ;Devolve o cursor para a posicao original
+	
+	JMP LOOP_DIGITA_PAREDE
+
+ERRO_PAREDE:
+	JSR R7, DISPLAY_CLS
+	MOV #MSG_ERRO_PAREDE, R0
+	MOV #putmsg, R5
+	JSR R7, _SISTEMA
+	
+	ERRO_PAREDE_WAIT_ENTER:
+	MOV #getchar, R5
+	JSR R7, _SISTEMA
+	CMP #ENTER, R0 ;Verifica se a tecla enter foi digitada
+	BNE ERRO_PAREDE_WAIT_ENTER ;Se qualquer tecla que NAO for o enter for digitada, inicia o loop novamente pedindo uma nova tecla
+	JMP PEDE_NUM_PAREDE ;Se a tecla enter for digitada, pede um novo numero de parede
+
+FIM_PROGRAMA:
+	JSR R7, DISPLAY_CLS
+	MOV #MSG_FIM_PROGRAMA, R0
+	MOV #putmsg, R5
+	JSR R7, _SISTEMA
+	HLT ;Fim de execucao do programa, solicitado pelo usuario
+
+ERRO_DESCONHECIDO:
+	JSR R7, DISPLAY_CLS
+	MOV #MSG_TESTE, R0
+	MOV #putmsg, R5
+	JSR R7, _SISTEMA
+	HLT
+	
+DISPLAY_CLS: ;Subrotina para deixar o display vazio - sem nenhum caractere
+    CLR 65500             ; limpa LED 00
+    CLR 65501             ; limpa LED 01
+    CLR 65502             ; limpa LED 02
+    CLR 65503             ; limpa LED 03
+    CLR 65504             ; limpa LED 04
+    CLR 65505             ; limpa LED 05
+    CLR 65506             ; limpa LED 06
+    CLR 65507             ; limpa LED 07
+    CLR 65508             ; limpa LED 08
+    CLR 65509             ; limpa LED 09
+    CLR 65510             ; limpa LED 10
+    CLR 65511             ; limpa LED 11
+    CLR 65512             ; limpa LED 12
+    CLR 65513             ; limpa LED 13
+    CLR 65514             ; limpa LED 14
+    CLR 65515             ; limpa LED 15
+    CLR 65516             ; limpa LED 16
+    CLR 65517             ; limpa LED 17
+    CLR 65518             ; limpa LED 18
+    CLR 65519             ; limpa LED 19
+    CLR 65520             ; limpa LED 20
+    CLR 65521             ; limpa LED 21
+    CLR 65522             ; limpa LED 22
+    CLR 65523             ; limpa LED 23
+    CLR 65524             ; limpa LED 24
+    CLR 65525             ; limpa LED 25
+    CLR 65526             ; limpa LED 26
+    CLR 65527             ; limpa LED 27
+    CLR 65528             ; limpa LED 28
+    CLR 65529             ; limpa LED 29
+    CLR 65530             ; limpa LED 30
+    CLR 65531             ; limpa LED 31
+    CLR 65532             ; limpa LED 32
+    CLR 65533             ; limpa LED 33
+    CLR 65534             ; limpa LED 34
+    CLR 65535             ; limpa LED 35
+	MOV #0, R0
+	MOV #setcursor, R5
+	JSR R7, _SISTEMA
+    RTS R7                ; Retorna para o ponto original em que a funcao foi chamada
+	
+ZERA_VARIAVEIS:
+	MOV #0, AUX0
+	MOV #0, MSB_PAREDE
+	MOV #0, LSB_PAREDE
+	MOV #0, TEMP_PAREDE
+	MOV #0, SEGUNDO_DIGITO
+	RTS R7
+	
+;============Problemas encontrados ao longo do desenvolvimento do programa===============;
+;-O kernel nao permite que a mesma funcao seja chamada duas vezes seguidas - Erro constatado com a funcao putmsg
+;-As rotinas definidas nas contantes nao se mostraram funcionais com o comando DB, atingi o resultado esperado apenas quando usei o comando EQU
+;-Jumps condicionais deixam de funcionar apos certo ponto no programa, quando o limite de 8 bits é estourado, é necessario usar um jump para outro jump, nesse caso
+;-Foi considerada a existencia de 100 paredes, de 00 a 99
+;-Para resolver o problema com os jumps condicionais foram utilizados "atalhos"
+;===========Constantes utilizadas - definidas pelo kernel=============;
+ORG 15000 
+kbhit:		EQU	0
+getchar:	EQU	1
+putchar:	EQU	2
+putmsg:		EQU	3
+setcursor:	EQU	4
+setwall:	EQU	5
+read:		EQU	6
+move00:		EQU	7
+move:		EQU	8
+moving:		EQU	9
+getcamera:	EQU	10
+_SISTEMA:	EQU	h0080
+	;Caracteres ASCII
+ENTER:		EQU 13
+BACKSPACE:	EQU 8
+SPACE:		EQU 20
+ASCII_ZERO:		EQU 48
+ASCII_UM:		EQU 49
+ASCII_DOIS:		EQU 50
+ASCII_TRES:		EQU 51
+ASCII_QUATRO: 	EQU	52
+ASCII_CINCO:	EQU 53
+ASCII_SEIS:		EQU 54
+ASCII_SETE:		EQU 55
+ASCII_OITO:		EQU 56
+ASCII_NOVE:		EQU 57
+ASCII_DESVIO:	EQU 48
+;=========== Variaveis utilizadas ao longo do programa ===================;
+AUX0: DB 0
+MSB_PAREDE: DB 0
+LSB_PAREDE: DB 0
+TEMP_PAREDE: DB 0
+SEGUNDO_DIGITO: DB 0
+
+;=========== MENSAGENS UTILIZADAS (display de 36 caracteres) =============;
+MSG_IDENTIFICACAO:	dab 'Autor:Giordano Souza - Cartao:308054',0 ;Mensagem de identificacao exibida no inicio do programa
+MSG_ASKWALL: 		dab 'Informe o numero da parede: ',0 ;Mensagem de solicitacao para uma nova parede
+MSG_ERRO_PAREDE:	dab 'Numero da parede invalido!',0
+MSG_FIM_PROGRAMA:	dab 'Encerrando programa... Ate logo!',0
+MSG4_1:				dab 'Parede ',0
+MSG4_2:				dab ', Largura=',0
+MSG4_3:				dab ', Altura=',0
+MSG_TESTE:			dab 'ERRO DESCONHECIDO! CHECAR CODIGO!',0
+MSG_TESTE2:			dab 'Executou até aqui!',0

@@ -1,0 +1,69 @@
+;Nome: Giordano Souza de Paula
+;Cartao UFRGS: 00308054
+
+;==================INFO (excluir)==========================================================================
+;Display tem 26 caracteres
+
+;Esboco do programa
+;WHILE_ID:
+;while(!=ENTER) {
+;	printf("Autor: Giordano Souza"); //21 caracteres
+;	delay(segundos);
+;	clear_screen();
+;	printf("Cartao UFRGS: 00308054"); //22 caracteres
+;	delay(segundos);
+;	clear_screen();
+;	JMP WHILE_ID
+;}
+;JMP WHILE_PAREDE //Se sair do while_id vai para o while parede
+
+;WHILE_PAREDE: //Se o enter for apertado, sai da tela inicial
+;clear_screen();
+;printf("Informe a parede: ");
+;WHILE_PAREDE:
+;while(!=ENTER){
+	;getchar(); //Para o programa, esperando que uma tecla seja digitada para uma proxima acao 
+;
+
+;====AREA RESERVADA PROGRAMAS CESAR==========;
+; Acesso em 16 bits
+	org		hff80
+STACK:
+	daw		[31]		; Área reservada
+IVET:	dw		0			; Vetor de interrupção
+
+; Acesso em 8 bits
+	dab		[24]
+INTS:	db		0			; INTERRUPT STATUS: IP x x x . x x IPStec IPStim
+INTE:	db		0			; INTERRUPT ENABLE: IE x x x . x x IEStec IEStim
+TECST:	db		0			; Status do teclado
+TECDT:	db		0			; Dado do teclado
+VISOR:	dab		[36]		; Portas de acesso ao visor
+
+;=======INICIO DO PROGRAMA PRINCIPAL=========;
+ORG 0
+mov		#STACK,r6
+mov		#MSG1,r0
+mov		#22,r1
+jsr		r7,Display1
+
+hlt
+
+; void Display1( r0 = Endereço de inicio da mensagem; r1 = Tamanho da mensagem)
+Display1:
+	mov		#VISOR,R2
+	dec		r0
+Display1_1:
+	mov		(r0),(R2)
+	inc		r0
+	inc		r2
+	dec		r1
+	bne		Display1_1
+	rts		r7
+;===========MENSAGENS UTILIZADAS=============;
+MSG0: 
+	dab 'Autor: Giordano Souza' ;21 caracteres
+MSG1: 
+	dab 'Cartao UFRGS: 00308054' ;22 caracteres
+MSG2: 
+	dab 'Informe a parede: ' ;18 caracteres

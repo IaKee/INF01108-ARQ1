@@ -1,0 +1,261 @@
+
+;
+;**************************************************************************************************
+;	- Programa para comparar o comportamento da leitura de teclado de forma direta e usando a interrupção
+;	- O programa verifica se tem tecla.
+;		- Se tiver, colocar no visor;
+;		- Se não tiver, entra em um wait de 10 segundos
+;	- No laco principal tem duas funções:
+;		1. DisplayTeclado: lê o teclado e coloca no visor
+;		2. Wait: fornece a temporização de 10 segundos
+;	- São duas versões do programa
+;		1. Versão sem interrupção -> mostra-se que serão perdidas teclas, mesmo com um buffer no PP
+;		2. Versão com interrupção -> mostra-se que as teclas podem ser armazenadas em um buffer, na ISR
+;	- Versão 1
+;		<<1>> Configuração da interrupção
+;		<<2>> Configuração da leitura de teclado
+;		
+;
+;**************************************************************************************************
+;
+
+
+;==========================================================================
+; Área Reservada
+
+; Acesso em 16 bits
+		org		hff80
+STACK:
+		daw		[31]		; Área reservada
+IVET:	dw		0			; Vetor de interrupção
+
+; Acesso em 8 bits
+		dab		[24]
+INTS:	db		0			; INTERRUPT STATUS: IP x x x . x x IPStec IPStim
+INTE:	db		0			; INTERRUPT ENABLE: IE x x x . x x IEStec IEStim
+TECST:	db		0			; Status do teclado
+TECDT:	db		0			; Dado do teclado
+VISOR:	dab		[36]		; Portas de acesso ao visor
+
+
+;==========================================================================
+;
+		org		0
+		
+;
+;**************************************************************************************************
+; Inicializa o processador e o hardware		
+		mov		#STACK,r6
+		clr		INTS			; Reset pedidos de interrupção
+		clr 	TECST			; Reset estado do hardware do teclado
+		mov		#isr,IVET		; Set Interrupt Service Rotine
+		
+;
+;**************************************************************************************************
+; Inicializa variaveis de operação das rotinas do programa
+		mov		#VISOR,POSICAO		; POSICAO = VISOR
+		jsr		r7,ClearDisplay
+		
+;
+;**************************************************************************************************
+; Programa principal
+
+; <<1>> Configuração da interrupção
+		mov		#h00,INTE		; Sem interrupção
+;		mov		#h82,INTE		; Com interrupção de teclado - Habilita as interrupções necessárias: TECLADO=0x82   TIMER=0x81
+
+main:
+		jsr		r7,DisplayTeclado
+		jsr		r7,Wait
+		jmp		main
+		
+		
+;
+;**************************************************************************************************
+; Le teclado e coloca no visor
+DisplayTeclado:
+		jsr		r7,TeclaDisponivel	; while (TeclaDisponivel()) {
+		tst		r0
+		beq		DT_Fim
+		
+		jsr		r7,GetTecla			;		r0 = GetTecla()
+		
+		cmp		r0,#' '				;		if (r0>=' ' && r0<='z') {}
+		blt		DT_Fim
+		cmp		r0,#'z'
+		bgt		DT_Fim
+		
+		mov		POSICAO,r1			;			*POSICAO = r0;
+		mov		r0,(r1)
+		inc		r1					;			++POSICAO;
+		bne		CP_Inc				;			if (POSICAO==0)
+		mov		#VISOR,r1			;					POSICAO = VISOR;
+CP_Inc:
+		mov		r1,POSICAO
+		jmp		DisplayTeclado		;		}
+									; }
+DT_Fim:
+		rts		r7					; return;
+
+
+;
+;**************************************************************************************************
+; Simula um processamento demorado
+Wait:
+		mov		#10,r0
+WaitLoopR0:
+		mov		#30000,r1
+WaitLoopR1:
+		sob		r1,WaitLoopR1
+		sob		r0,WaitLoopR0
+		rts		r7
+		
+;
+;**************************************************************************************************
+; Limpa o visor
+ClearDisplay:
+		mov		#VISOR,r0
+CD_Loop:
+		mov		#' ',(r0)
+		inc		r0
+		bne		CD_Loop
+		rts		r7
+		
+		
+;
+;**************************************************************************************************
+; Rotinas para a manipulação do hardware e interrupção (se houver) do teclado
+; TeclaDisponivel	-> Rotina que informa se algo foi digitado
+; GetTecla			-> Rotina que retorna a tecla digitada
+
+; <<2>> Configuração da leitura de teclado
+
+;
+; Rotina que informa se algo foi digitado
+; Retorna R0==0, se nada digitado; R0!=0, se algo digitado
+TeclaDisponivel:	jmp		TeclaDisponivel_1	; -> leitura direta
+;TeclaDisponivel:	jmp		TeclaDisponivel_2	; -> leitura por interrupção
+;
+; Rotina que retorna a tecla digitada
+GetTecla:			jmp		GetTecla_1
+;GetTecla:			jmp		GetTecla_2
+
+;
+; Versão 1 das funções
+TeclaDisponivel_1:
+		mov		TECST,r0
+		rts		r7
+		
+GetTecla_1:
+		mov		TECDT,r0
+		clr		TECST
+		rts		r7
+
+;
+; Versão 2 das funções
+TeclaDisponivel_2:
+		and		#h7f,INTE			; IE = 0;
+		
+		clr		r0					; R0 = (prOut==ptIn ? FALSE:TRUE);
+		cmp		ptOut, ptIn
+		beq		TD_2_1
+		mov		#1,r0
+TD_2_1:
+
+		or		#h80,INTE			; IE = 1;
+		rts		r7
+		
+GetTecla_2:
+		and		#h7f,INTE			; IE = 0
+		
+		mov		ptOut,r1			; r0 = *ptOut++
+		dec		r1
+		mov		TEC_BUFFER(r1),r0
+		add		#2,r1
+		
+		and		#hff,r0				; r0 &= 0xFF
+		
+		and		#h1f,r1				; ptOut = ptOut & 0x1F // loop around pointer
+		mov		r1,ptOut		
+		
+		or		#h80,INTE			; IE = 1
+		
+		rts		r7
+
+				
+;
+;**************************************************************************************************
+; Rotina de INTERRUPÇÃO
+; Só será chamada se as interrupções estiverem habilitadas
+isr:
+		mov		r0,-(r6)	; Salva registradores
+		mov		r1,-(r6)
+		mov		r2,-(r6)
+		mov		r3,-(r6)
+		mov		r4,-(r6)
+		mov		r5,-(r6)
+
+		mov		INTS,r0		; Verifica se é INT do TECLADO
+		and		#2,r0
+		beq		ISR3
+		jsr		r7,ISRtec	; Tratamento da INT do TECLADO
+		and		#hFFFD,INTS	; Desliga bit de INT TECLADO
+ISR3:
+
+		mov		(r6)+,r5	; Retorna os registradores da pilha
+		mov		(r6)+,r4
+		mov		(r6)+,r3
+		mov		(r6)+,r2
+		mov		(r6)+,r1
+		mov		(r6)+,r0
+
+		rti					; Return From Interrupt
+
+
+; Tratamento das interrupções de teclado
+ISRtec:
+		tst		TECST				; if (Tecla está disponivel?) {
+		beq		ISRtec1
+		
+		mov		ptIn,r2				; 		p = (in+1)&0x1F
+		inc		r2
+		and		#h1F,r2
+		cmp		r2,ptOut			; 		if (p!=out) { // Verifica se o BUFFER ESTA CHEIO
+		beq		ISRtec_2
+		
+		mov		ptIn,r1				;				*in = TECLA
+		dec		r1
+		mov		TEC_BUFFER(r1),r0
+		and		#hFF00,r0
+		or		TECDT,r0
+		mov		r0,TEC_BUFFER(r1)
+		
+		mov		r2,ptIn				;				in = p
+									; 		}
+
+ISRtec_2:
+		clr 	TECST				;
+	
+ISRtec1:	
+		rts	r7						; }
+	
+		
+		
+;
+;**************************************************************************************************
+; Variaveis do programa
+; Ocupam a memória logo após o final do programa		
+;
+POSICAO:	dw		0		; Endereço no visor da posição atual onde o 'A' está aparecendo
+
+ptIn:		dw		0
+ptOut:		dw		0
+TEC_BUFFER:	dab		[32]
+
+		
+	
+	
+	
+	
+
+		
